@@ -1,0 +1,62 @@
+[tool.poetry]
+name = "portfolio-workbench"
+version = "0.1.0"
+description = "Portifolio Workbench"
+authors = ["André Lopes"]
+readme = "README.md"
+packages = [{ include = "app", from = "src" }]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+opentelemetry-api = "^1.24.0"
+opentelemetry-sdk = "^1.24.0"
+opentelemetry-instrumentation = "^0.45b0"
+opentelemetry-instrumentation-fastapi = "^0.45b0"
+opentelemetry-exporter-otlp = "^1.24.0"
+prometheus-fastapi-instrumentator = "^6.1.0"
+pandas = "^2.2.3"
+yfinance = "^0.2.55"
+fastapi = "^0.115.12"
+pydantic = {extras = ["email"], version = "^2.11.2"}
+fastapy = "^1.0.5"
+sqlmodel = "^0.0.24"
+alembic = "^1.15.2"
+pydantic-settings = "^2.8.1"
+aiosqlite = "^0.21.0"
+sqlalchemy = "^2.0.40"
+greenlet = "^3.1.1"
+uvicorn = "^0.34.0"
+pyjwt = "^2.10.1"
+passlib = {extras = ["bcrypt"], version = "^1.7.4"}
+python-jose = "^3.4.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.5"
+black = "^25.1.0"
+pytest-cov = "^6.0.0"
+mypy = "^1.15.0"
+httpx = "^0.28.1"
+
+
+[tool.poetry.group.test.dependencies]
+pytest-mock = "^3.14.0"
+
+
+[tool.poetry.scripts]
+hello-world = "app.hello:main"
+etf = "app.cli:etf"
+
+[tool.black]
+line-length = 120
+skip-string-normalization = true
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--cov=src --cov-report html:doc/html"
+filterwarnings = [
+  "ignore::DeprecationWarning"
+]
+apscheduler = "^3.10.4"
