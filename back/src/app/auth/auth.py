@@ -14,7 +14,7 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 async def register_user(
     username: str = Form(...),
     password: str = Form(...),
-    session: AsyncSession = Depends(get_session())
+    session: AsyncSession = Depends(get_session)
 ):
     existing = await session.exec(select(User).where(User.email == username))
     if existing.first():
@@ -28,7 +28,7 @@ async def register_user(
 async def login_for_access_token(
     username: str = Form(...),
     password: str = Form(...),
-    session: AsyncSession = Depends(get_session())
+    session: AsyncSession = Depends(get_session)
 ):
     result = await session.exec(select(User).where(User.email == username))
     user = result.first()

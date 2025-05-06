@@ -1,15 +1,19 @@
-from app.utils.logging import logger
-from prometheus_fastapi_instrumentator import Instrumentator
-from app.utils.tracing import configure_tracer
-from fastapi import FastAPI, Depends
-from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
+
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlmodel import SQLModel
+
+from app.api.v1 import asset_type
+from app.auth import auth, security
 from app.core.config import settings
 from app.db.session import engine
-from app.auth import auth, security
-from app.api.v1 import asset_type, user, portfolio, holding, asset, etf, top_holding
+from app.utils.tracing import configure_tracer
 
+
+from app.models.user import User
+from app.models.asset_type import AssetType
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -55,12 +59,12 @@ app.add_middleware(
 
 # Include routers directly (not versioned APIRouter wrapper)
 app.include_router(auth.router, prefix="/api/v1")
-app.include_router(user.router, prefix="/api/v1")
-app.include_router(portfolio.router, prefix="/api/v1")
-#app.include_router(holding.router, prefix="/api/v1", tags=["holding"])
-#app.include_router(asset.router, prefix="/api/v1", tags=["asset"])
-#app.include_router(etf.router, prefix="/api/v1", tags=["etf"])
-#app.include_router(top_holding.router, prefix="/api/v1", tags=["top_holding"])
+# app.include_router(user.router, prefix="/api/v1")
+# app.include_router(portfolio.router, prefix="/api/v1")
+# app.include_router(holding.router, prefix="/api/v1", tags=["holding"])
+# app.include_router(asset.router, prefix="/api/v1", tags=["asset"])
+# app.include_router(etf.router, prefix="/api/v1", tags=["etf"])
+# app.include_router(top_holding.router, prefix="/api/v1", tags=["top_holding"])
 app.include_router(asset_type.router, prefix="/api/v1")
 
 
