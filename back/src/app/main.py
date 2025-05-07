@@ -9,9 +9,9 @@ from app.api.v1 import asset_type
 from app.auth import auth, security
 from app.core.config import settings
 from app.db.session import engine, get_session_raw
-from app.utils.tracing import configure_tracer
+from app.utils.tracing import configure_tracer, CorrelationIdMiddleware
 from app.db.seed import seed_initial_data
-
+from app.utils.logging import setup_logging
 
 from app.models.user import User
 from app.models.asset_type import AssetType
@@ -19,6 +19,9 @@ from app.models.asset_type import AssetType
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Setup logging
+    setup_logging()
+
     # Create database tables
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
@@ -49,6 +52,9 @@ instrumentator.instrument(app).expose(app, include_in_schema=False)
 
 # configure tracing
 configure_tracer(app)
+
+# Add correlation ID middleware
+app.add_middleware(CorrelationIdMiddleware)
 
 origins = settings.BACKEND_CORS_ORIGINS
 

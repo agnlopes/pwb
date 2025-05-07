@@ -1,6 +1,6 @@
 # src/app/core/config.py
 import os
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -12,9 +12,22 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:3000"]
     SECRET_KEY: str
+    ENV: str = "prod"
+    
+    # Logging settings
+    LOG_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    LOG_FORMAT: str = "json"  # or "text"
     LOG_DIR: str = "logs"
     LOG_FILE: str = os.path.join(LOG_DIR, "app.log")
-    ENV: str = "prod"
+    LOG_MAX_BYTES: int = 5_000_000  # 5MB
+    LOG_BACKUP_COUNT: int = 3
+    LOG_STDOUT_LEVEL: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "WARNING"
+    LOG_USER_ACTIONS: Literal["all", "write"] = "write"  # Log all actions or only write operations
+    
+    # Tracing settings
+    TRACING_ENABLED: bool = True
+    TRACING_HEADER: str = "X-Correlation-ID"
+    TRACING_GENERATE_IF_MISSING: bool = True
     
     # Database settings
     DATABASE_TYPE: str

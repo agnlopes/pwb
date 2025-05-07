@@ -7,6 +7,7 @@ from sqlmodel import Field, SQLModel
 
 
 class AuditLog(SQLModel, table=True):
+    __tablename__ = "audit_log"
     """Model for tracking user actions and system events."""
     
     id: Optional[int] = Field(default=None, primary_key=True)

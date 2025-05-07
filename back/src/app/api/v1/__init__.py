@@ -16,6 +16,7 @@ from app.models import (
 )
 from app.models.user import User
 from app.services import GenericService
+from app.utils.logging import log_user_action
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=GenericCreate)
@@ -45,6 +46,7 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
         self.update_schema = update_schema
         self.read_schema = read_schema
         self.filter_schema = filter_schema
+        self.model_name = model_name
 
         # Register routes
         self._register_crud_routes()
@@ -73,6 +75,16 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.create(db, obj_in)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="create",
+                method="POST",
+                path=f"/{self.model_name}/",
+                target_type=self.model_name,
+                target_id=obj.id,
+                details={"data": obj_in.dict()},
+            )
             return GenericResponse(data=obj)
 
     def _register_get_route(self):
@@ -83,6 +95,15 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.get_by_id(db, item_id)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="get",
+                method="GET",
+                path=f"/{self.model_name}/{item_id}",
+                target_type=self.model_name,
+                target_id=item_id,
+            )
             return GenericResponse(data=obj)
 
     def _register_list_route(self):
@@ -105,6 +126,21 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                 sort_order=sort_order,
             )
             total = await self.service.count(db)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="list",
+                method="GET",
+                path=f"/{self.model_name}/",
+                target_type=self.model_name,
+                details={
+                    "page": page,
+                    "page_size": page_size,
+                    "sort_by": sort_by,
+                    "sort_order": sort_order,
+                    "total": total,
+                },
+            )
             return GenericListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def _register_search_route(self):
@@ -125,6 +161,18 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                 sort_order=filters.sort_order or "asc",
             )
             total = await self.service.count(db, filters=filters)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="search",
+                method="POST",
+                path=f"/{self.model_name}/search",
+                target_type=self.model_name,
+                details={
+                    "filters": filters.dict(),
+                    "total": total,
+                },
+            )
             return GenericListResponse(items=items, total=total, page=filters.page, page_size=filters.page_size)
 
     def _register_update_route(self):
@@ -136,6 +184,16 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.update(db, item_id, obj_in)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="update",
+                method="PUT",
+                path=f"/{self.model_name}/{item_id}",
+                target_type=self.model_name,
+                target_id=item_id,
+                details={"data": obj_in.dict()},
+            )
             return GenericResponse(data=obj)
 
     def _register_patch_route(self):
@@ -147,6 +205,16 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.patch(db, item_id, obj_in)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="patch",
+                method="PATCH",
+                path=f"/{self.model_name}/{item_id}",
+                target_type=self.model_name,
+                target_id=item_id,
+                details={"data": obj_in.dict()},
+            )
             return GenericResponse(data=obj)
 
     def _register_delete_route(self):
@@ -158,6 +226,16 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.delete(db, item_id, hard_delete)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="delete",
+                method="DELETE",
+                path=f"/{self.model_name}/{item_id}",
+                target_type=self.model_name,
+                target_id=item_id,
+                details={"hard_delete": hard_delete},
+            )
             return GenericResponse(data=obj)
 
     def _register_restore_route(self):
@@ -168,6 +246,15 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             user: User = Depends(get_current_user)
         ):
             obj = await self.service.restore(db, item_id)
+            await log_user_action(
+                session=db,
+                user_id=user.id,
+                action="restore",
+                method="PUT",
+                path=f"/{self.model_name}/{item_id}/restore",
+                target_type=self.model_name,
+                target_id=item_id,
+            )
             return GenericResponse(data=obj)
 
     def add_custom_route(

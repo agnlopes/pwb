@@ -13,6 +13,7 @@ from app.auth.security import (
 )
 from app.db.session import get_session
 from app.models.user import User
+from app.utils.logging import log_user_action
 
 router = APIRouter()
 
@@ -37,12 +38,36 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.email})
+    
+    # Log successful login
+    await log_user_action(
+        session=db,
+        user_id=user.id,
+        action="login",
+        method="POST",
+        path="/token",
+        target_type="user",
+        target_id=user.id,
+        details={"email": user.email},
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/me")
 async def read_users_me(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_session),
 ) -> Any:
     """Get current user info."""
+    # Log user info access
+    await log_user_action(
+        session=db,
+        user_id=current_user.id,
+        action="get_profile",
+        method="GET",
+        path="/me",
+        target_type="user",
+        target_id=current_user.id,
+    )
     return current_user 
