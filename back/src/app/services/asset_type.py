@@ -1,15 +1,22 @@
 from typing import List, Optional
 
+from fastapi import Depends, HTTPException, status
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.auth.security import get_current_user
+from app.db.session import get_session
 from app.models.asset_type import (
     AssetType,
     AssetTypeCreate,
     AssetTypeFilter,
+    AssetTypeRead,
     AssetTypeUpdate,
 )
+from app.models.user import User
 from app.services import GenericService
+
+from sqlalchemy import func
 
 
 class AssetTypeService(GenericService[AssetType, AssetTypeCreate, AssetTypeUpdate, AssetTypeFilter]):
@@ -18,29 +25,25 @@ class AssetTypeService(GenericService[AssetType, AssetTypeCreate, AssetTypeUpdat
     Extends the generic service with specific functionality for asset types.
     """
 
-    def __init__(self):
-        super().__init__(model=AssetType)
+    def __init__(self, model: type[AssetType] = AssetType):
+        super().__init__(model=model)
 
-    async def get_by_name(self, db: AsyncSession, name: str) -> Optional[AssetType]:
+    async def get_by_name(
+        self,
+        name: str,
+        db: AsyncSession = Depends(get_session),
+        user: User = Depends(get_current_user)
+    ) -> AssetTypeRead:
         """Get an asset type by its name."""
         statement = select(self.model).where(self.model.name == name, self.model.is_active)
         result = await db.exec(statement)
-        return result.first()
-
-    async def search_by_name(
-        self, db: AsyncSession, name_query: str, skip: int = 0, limit: int = 100
-    ) -> List[AssetType]:
-        """
-        Search asset types by partial name match.
-        """
-        from sqlalchemy import func
-
-        statement = (
-            select(self.model)
-            .where(func.lower(self.model.name).contains(func.lower(name_query)), self.model.is_active)
-            .offset(skip)
-            .limit(limit)
-        )
-
-        result = await db.exec(statement)
-        return list(result.all())
+        asset_type = result.first()
+        
+        if not asset_type:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Asset type with name {name} not found"
+            )
+        return asset_type
+    
+    

@@ -1,7 +1,7 @@
 # src/app/core/config.py
 import os
 from typing import List, Optional
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -14,26 +14,22 @@ class Settings(BaseSettings):
     SECRET_KEY: str
     LOG_DIR: str = "logs"
     LOG_FILE: str = os.path.join(LOG_DIR, "app.log")
+    ENV: str = "prod"
     
     # Database settings
     DATABASE_TYPE: str
-    DATABASE_URL: Optional[str] = None
-    SQLITE_DB: str
+    DATABASE_URL: str
     DB_POOL_SIZE: int = 5
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
-    DB_ECHO: bool = True
+    DB_ECHO: bool = False
 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        if self.DATABASE_URL is None:
-            self.DATABASE_URL = self.SQLITE_DB
-
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
-        extra = "allow"  # Allow extra fields in the .env file
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="allow"  # Allow extra fields in the .env file
+    )
 
 
 settings = Settings()

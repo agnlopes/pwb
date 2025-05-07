@@ -1,4 +1,4 @@
-from typing import Callable, Generic, Optional, Type, TypeVar
+from typing import Callable, Generic, Optional, Type, TypeVar, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -24,80 +24,160 @@ FilterSchemaType = TypeVar("FilterSchemaType", bound=GenericFilter)
 ReadSchemaType = TypeVar("ReadSchemaType", bound=GenericRead)
 
 
-def get_router(
-    *,
-    service: GenericService,
-    model_name: str,
-    create_schema: Type[CreateSchemaType],
-    update_schema: Type[UpdateSchemaType],
-    read_schema: Type[ReadSchemaType],
-    filter_schema: Type[FilterSchemaType],
-) -> APIRouter:
-    router = APIRouter(prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")])
+class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchemaType, FilterSchemaType, ReadSchemaType]):
+    """
+    Generic router class that provides CRUD operations for any model.
+    """
 
-    @router.post("/", response_model=GenericResponse[read_schema])
-    async def create_item(
-        obj_in: create_schema,
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
+    def __init__(
+        self,
+        *,
+        service: GenericService,
+        model_name: str,
+        create_schema: Type[CreateSchemaType],
+        update_schema: Type[UpdateSchemaType],
+        read_schema: Type[ReadSchemaType],
+        filter_schema: Type[FilterSchemaType],
     ):
-        obj = await service.create(db, obj_in)
-        return GenericResponse(data=obj)
+        super().__init__(prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")])
+        self.service = service
+        self.create_schema = create_schema
+        self.update_schema = update_schema
+        self.read_schema = read_schema
+        self.filter_schema = filter_schema
 
-    @router.get("/{uid}", response_model=GenericResponse[read_schema])
-    async def get_item(
-        item_id: UUID,
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
+        # Register routes
+        self._register_crud_routes()
+        self._register_custom_routes()
+
+    def _register_crud_routes(self):
+        """Register standard CRUD routes."""
+        self._register_create_route()
+        self._register_get_route()
+        self._register_list_route()
+        self._register_search_route()
+        self._register_update_route()
+        self._register_patch_route()
+        self._register_delete_route()
+        self._register_restore_route()
+
+    def _register_custom_routes(self):
+        """Register custom routes. Override this method in subclasses to add custom routes."""
+        pass
+
+    def _register_create_route(self):
+        @self.post("/", response_model=GenericResponse[self.read_schema])
+        async def create_item(
+            obj_in: self.create_schema,
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.create(db, obj_in)
+            return GenericResponse(data=obj)
+
+    def _register_get_route(self):
+        @self.get("/{uid}", response_model=GenericResponse[self.read_schema])
+        async def get_item(
+            item_id: UUID,
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.get_by_id(db, item_id)
+            return GenericResponse(data=obj)
+
+    def _register_list_route(self):
+        @self.get("/", response_model=GenericListResponse[self.read_schema])
+        async def list_items(
+            page: int = Query(1, ge=1),
+            page_size: int = Query(10, ge=1, le=100),
+            sort_by: str | None = None,
+            sort_order: str = "asc",
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            """List all items with basic pagination and sorting."""
+            skip = (page - 1) * page_size
+            items = await self.service.get_all(
+                db,
+                skip=skip,
+                limit=page_size,
+                sort_by=sort_by,
+                sort_order=sort_order,
+            )
+            total = await self.service.count(db)
+            return GenericListResponse(items=items, total=total, page=page, page_size=page_size)
+
+    def _register_search_route(self):
+        @self.post("/search", response_model=GenericListResponse[self.read_schema])
+        async def search_items(
+            filters: self.filter_schema = Depends(),
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            """Search items with filtering, pagination, and sorting."""
+            skip = (filters.page - 1) * filters.page_size
+            items = await self.service.get_all(
+                db,
+                filters=filters,
+                skip=skip,
+                limit=filters.page_size,
+                sort_by=filters.sort_by,
+                sort_order=filters.sort_order or "asc",
+            )
+            total = await self.service.count(db, filters=filters)
+            return GenericListResponse(items=items, total=total, page=filters.page, page_size=filters.page_size)
+
+    def _register_update_route(self):
+        @self.put("/{uid}", response_model=GenericResponse[self.read_schema])
+        async def update_item(
+            item_id: UUID,
+            obj_in: self.update_schema,
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.update(db, item_id, obj_in)
+            return GenericResponse(data=obj)
+
+    def _register_patch_route(self):
+        @self.patch("/{uid}", response_model=GenericResponse[self.read_schema])
+        async def patch_item(
+            item_id: UUID,
+            obj_in: self.update_schema,
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.patch(db, item_id, obj_in)
+            return GenericResponse(data=obj)
+
+    def _register_delete_route(self):
+        @self.delete("/{uid}", response_model=GenericResponse[self.read_schema])
+        async def delete_item(
+            item_id: UUID,
+            hard_delete: bool = Query(False),
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.delete(db, item_id, hard_delete)
+            return GenericResponse(data=obj)
+
+    def _register_restore_route(self):
+        @self.put("/{uid}/restore", response_model=GenericResponse[self.read_schema])
+        async def restore_item(
+            item_id: UUID,
+            db: AsyncSession = Depends(get_session),
+            user: User = Depends(get_current_user)
+        ):
+            obj = await self.service.restore(db, item_id)
+            return GenericResponse(data=obj)
+
+    def add_custom_route(
+        self,
+        path: str,
+        method: str,
+        response_model: Type,
+        handler: Callable,
+        **kwargs
     ):
-        obj = await service.get_by_id(db, item_id)
-        return GenericResponse(data=obj)
-
-    @router.post("/list", response_model=GenericListResponse[read_schema])
-    async def list_items(
-        filters: filter_schema,
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
-    ):
-        skip = (filters.page - 1) * filters.page_size
-        items = await service.get_all(
-            db,
-            filters=filters,
-            skip=skip,
-            limit=filters.page_size,
-            sort_by=filters.sort_by,
-            sort_order=filters.sort_order or "asc",
-        )
-        total = await service.count(db, filters=filters)
-        return GenericListResponse(items=items, total=total, page=filters.page, page_size=filters.page_size)
-
-    @router.put("/{uid}", response_model=GenericResponse[read_schema])
-    async def update_item(
-        item_id: UUID,
-        obj_in: update_schema,
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
-    ):
-        obj = await service.update(db, item_id, obj_in)
-        return GenericResponse(data=obj)
-
-    @router.delete("/{uid}", response_model=GenericResponse[read_schema])
-    async def delete_item(
-        item_id: UUID,
-        hard_delete: bool = Query(False),
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
-    ):
-        obj = await service.delete(db, item_id, hard_delete)
-        return GenericResponse(data=obj)
-
-    @router.put("/{uid}/restore", response_model=GenericResponse[read_schema])
-    async def restore_item(
-        item_id: UUID,
-        db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
-    ):
-        obj = await service.restore(db, item_id)
-        return GenericResponse(data=obj)
-
-    return router
+        """Add a custom route to the router."""
+        route_method = getattr(self, method.lower())
+        route_method(path, response_model=response_model, **kwargs)(handler)

@@ -63,7 +63,7 @@ class AssetTypeListResponse(GenericListResponse):
     AssetType list response
     """
 
-    data: list[AssetTypeRead]
+    items: list[AssetTypeRead]
     total: int
     page: int = 1
 

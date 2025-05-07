@@ -7,7 +7,12 @@ readme = "README.md"
 packages = [{ include = "app", from = "src" }]
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = "^3.11"
+passlib = "1.7.4" # Latest version that supports bcrypt >=3.x without deprecated internals
+bcrypt = "3.2.2"  # Avoids post-4.0 changes that break compatibility with passlib
+# NOTE: bcrypt >=4.0 removes internal __about__ module, which causes runtime errors in some passlib versions.
+# This combination (python 3.1x + passlib 1.7.4 + bcrypt 3.2.2) is confirmed stable and avoids warnings or AttributeErrors.
+# Do not upgrade bcrypt past 3.2.2 unless passlib declares full compatibility with bcrypt 4+.
 opentelemetry-api = "^1.24.0"
 opentelemetry-sdk = "^1.24.0"
 opentelemetry-instrumentation = "^0.45b0"
@@ -17,7 +22,7 @@ prometheus-fastapi-instrumentator = "^6.1.0"
 pandas = "^2.2.3"
 yfinance = "^0.2.55"
 fastapi = "^0.115.12"
-pydantic = {extras = ["email"], version = "^2.11.2"}
+pydantic = { extras = ["email"], version = "^2.11.2" }
 fastapy = "^1.0.5"
 sqlmodel = "^0.0.24"
 alembic = "^1.15.2"
@@ -27,8 +32,8 @@ sqlalchemy = "^2.0.40"
 greenlet = "^3.1.1"
 uvicorn = "^0.34.0"
 pyjwt = "^2.10.1"
-passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 python-jose = "^3.4.0"
+python-multipart = "^0.0.20"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.3.5"
@@ -36,6 +41,7 @@ black = "^25.1.0"
 pytest-cov = "^6.0.0"
 mypy = "^1.15.0"
 httpx = "^0.28.1"
+ruff = "^0.11.8"
 
 
 [tool.poetry.group.test.dependencies]
@@ -53,10 +59,3 @@ skip-string-normalization = true
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
-
-[tool.pytest.ini_options]
-addopts = "--cov=src --cov-report html:doc/html"
-filterwarnings = [
-  "ignore::DeprecationWarning"
-]
-apscheduler = "^3.10.4"

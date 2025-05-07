@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import SQLModel, select
 from sqlmodel.ext.asyncio.session import AsyncSession
+from sqlalchemy import String, cast
 
 from app.models import GenericFilter, GenericModel
 
@@ -48,13 +49,13 @@ class GenericService(Generic[T, CreateSchemaType, UpdateSchemaType, FilterSchema
     async def get_all(
         self,
         db: AsyncSession,
-        filters: Optional[FilterSchemaType] = None,
         skip: int = 0,
         limit: int = 100,
         sort_by: Optional[str] = None,
         sort_order: str = "asc",
+        filters: Optional[FilterSchemaType] = None,
     ) -> List[T]:
-        """Get all instances of the model with filtering, pagination and sorting."""
+        """Get all instances of the model with pagination, sorting, and filtering."""
         statement = select(self.model).where(self.model.is_active)
 
         # Apply filters if provided
@@ -68,7 +69,12 @@ class GenericService(Generic[T, CreateSchemaType, UpdateSchemaType, FilterSchema
 
             for field_name, value in filter_data.items():
                 if hasattr(self.model, field_name):
-                    statement = statement.where(getattr(self.model, field_name) == value)
+                    field = getattr(self.model, field_name)
+                    # For string fields, use LIKE for substring search
+                    if isinstance(value, str):
+                        statement = statement.where(cast(field, String).ilike(f"%{value}%"))
+                    else:
+                        statement = statement.where(field == value)
 
         # Apply sorting
         sort_field = sort_by if sort_by and hasattr(self.model, sort_by) else "id"
@@ -97,7 +103,12 @@ class GenericService(Generic[T, CreateSchemaType, UpdateSchemaType, FilterSchema
 
             for field_name, value in filter_data.items():
                 if hasattr(self.model, field_name):
-                    statement = statement.where(getattr(self.model, field_name) == value)
+                    field = getattr(self.model, field_name)
+                    # For string fields, use LIKE for substring search
+                    if isinstance(value, str):
+                        statement = statement.where(cast(field, String).ilike(f"%{value}%"))
+                    else:
+                        statement = statement.where(field == value)
 
         result = await db.exec(statement)
         return len(result.all())
