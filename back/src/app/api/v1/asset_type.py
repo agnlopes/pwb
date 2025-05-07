@@ -4,13 +4,8 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 from app.api.v1 import GenericRouter
 from app.auth.security import get_current_user
 from app.db.session import get_session
-from app.models.asset_type import (
-    AssetType,
-    AssetTypeCreate,
-    AssetTypeFilter,
-    AssetTypeRead,
-    AssetTypeUpdate,
-)
+from app.models.asset_type import (AssetType, AssetTypeCreate, AssetTypeFilter,
+                                   AssetTypeRead, AssetTypeUpdate)
 from app.models.user import User
 from app.services.asset_type import AssetTypeService
 
@@ -26,8 +21,8 @@ router = GenericRouter(
 )
 
 router.add_custom_route(
-    path="/by_name/{name}", 
-    method="get", 
-    response_model=AssetTypeRead, 
-    handler=service.get_by_name
+    path="/by_name/{name}",
+    method="get",
+    response_model=AssetTypeRead,
+    handler=service.get_by_name,
 )

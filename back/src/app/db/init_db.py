@@ -1,10 +1,13 @@
 import asyncio
+
 from sqlmodel import SQLModel, select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from app.auth.security import get_password_hash
 from app.db.session import engine
 from app.models.asset import AssetType
 from app.models.user import User
-from app.auth.security import get_password_hash
-from sqlmodel.ext.asyncio.session import AsyncSession
+
 
 async def seed_asset_types(session: AsyncSession):
     result = await session.exec(select(AssetType))

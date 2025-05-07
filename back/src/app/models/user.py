@@ -2,21 +2,16 @@ from uuid import UUID
 
 from sqlmodel import Field
 
-from app.models import (
-    GenericCreate,
-    GenericFilter,
-    GenericListResponse,
-    GenericModel,
-    GenericRead,
-    GenericResponse,
-    GenericUpdate,
-)
+from app.models import (GenericCreate, GenericFilter, GenericListResponse,
+                        GenericModel, GenericRead, GenericResponse,
+                        GenericUpdate)
 
 
 class User(GenericModel, table=True):
     """
     User model
     """
+
     __tablename__ = "user"
 
     username: str = Field(index=True, nullable=False, unique=True)

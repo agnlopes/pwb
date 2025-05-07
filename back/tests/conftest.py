@@ -52,4 +52,4 @@ async def db_session(test_db: AsyncSession) -> AsyncSession:
 @pytest.fixture
 def client() -> TestClient:
     """Create a test client."""
-    return TestClient(app) 
+    return TestClient(app)

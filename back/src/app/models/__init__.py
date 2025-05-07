@@ -5,7 +5,7 @@ from uuid import UUID, uuid4
 from sqlmodel import Field, SQLModel
 
 # Type variable for the model
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def utc_now() -> datetime:
@@ -28,6 +28,7 @@ class TimestampMixin(SQLModel):
 
 class GenericModel(IdMixin, TimestampMixin, SQLModel):
     """Base SQLModel with common fields for all models."""
+
     __tablename__: ClassVar[Optional[str]] = None
     is_active: bool = Field(default=True)
 

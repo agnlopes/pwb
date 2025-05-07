@@ -21,7 +21,8 @@ lint:
 
 format:
 	@echo "🔎 Formatting code..."
-	poetry run ruff format .
+	poetry run ruff format src/
+	poetry run isort src/
 
 # testing
 test:
