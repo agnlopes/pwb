@@ -8,11 +8,13 @@ from sqlmodel import SQLModel
 from app.api.v1 import asset_type
 from app.auth import auth, security
 from app.core.config import settings
-from app.db.seed import seed_initial_data
 from app.db.session import engine, get_session_raw
-from app.models.asset_type import AssetType
-from app.models.user import User
 from app.utils.tracing import configure_tracer
+from app.db.seed import seed_initial_data
+
+
+from app.models.user import User
+from app.models.asset_type import AssetType
 
 
 @asynccontextmanager
@@ -20,14 +22,14 @@ async def lifespan(app: FastAPI):
     # Create database tables
     async with engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
-
+    
     # Seed initial data
     session = await get_session_raw()
     try:
         await seed_initial_data(session)
     finally:
         await session.close()
-
+    
     yield
 
 
@@ -37,10 +39,7 @@ app = FastAPI(
     description=settings.DESCRIPTION,
     docs_url="/docs",
     redoc_url="/redoc",
-    swagger_ui_parameters={
-        "operationsSorter": "method",
-        "defaultModelsExpandDepth": -1,
-    },
+    swagger_ui_parameters={"operationsSorter": "method", "defaultModelsExpandDepth": -1},
     lifespan=lifespan,
 )
 

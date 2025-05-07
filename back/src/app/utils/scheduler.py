@@ -1,7 +1,7 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-
 from app.utils.logging import logger
+
 
 scheduler = AsyncIOScheduler()
 

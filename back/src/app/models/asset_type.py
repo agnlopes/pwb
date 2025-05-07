@@ -1,8 +1,14 @@
 from uuid import UUID
 
-from app.models import (GenericCreate, GenericFilter, GenericListResponse,
-                        GenericModel, GenericRead, GenericResponse,
-                        GenericUpdate)
+from app.models import (
+    GenericCreate,
+    GenericFilter,
+    GenericListResponse,
+    GenericModel,
+    GenericRead,
+    GenericResponse,
+    GenericUpdate,
+)
 
 
 class AssetType(GenericModel, table=True):

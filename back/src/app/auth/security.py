@@ -1,15 +1,13 @@
-from uuid import UUID
-
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from passlib.context import CryptContext
-from sqlmodel import select
+from jose import jwt, JWTError
 from sqlmodel.ext.asyncio.session import AsyncSession
-
-from app.core.config import settings
-from app.db.session import get_session
+from sqlmodel import select
+from uuid import UUID
 from app.models.user import User
+from app.db.session import get_session
+from app.core.config import settings
+from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_PREFIX}/auth/token")
@@ -23,9 +21,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_session)
-) -> User:
+async def get_current_user(token: str = Depends(oauth2_scheme), session: AsyncSession = Depends(get_session)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",

@@ -61,9 +61,7 @@ async def log_activity(
 
     # Check for valid log level
     if level not in loggers:
-        raise ValueError(
-            f"Invalid log level: {level}. Choose from list(loggers.keys())"
-        )
+        raise ValueError(f"Invalid log level: {level}. Choose from list(loggers.keys())")
 
     # Log the activity
     logger.log(loggers[level], json.dumps(message))

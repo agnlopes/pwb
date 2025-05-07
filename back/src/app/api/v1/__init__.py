@@ -1,4 +1,4 @@
-from typing import Callable, Generic, List, Optional, Type, TypeVar
+from typing import Callable, Generic, Optional, Type, TypeVar, List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
@@ -6,8 +6,14 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.auth.security import get_current_user
 from app.db.session import get_session
-from app.models import (GenericCreate, GenericFilter, GenericListResponse,
-                        GenericRead, GenericResponse, GenericUpdate)
+from app.models import (
+    GenericCreate,
+    GenericFilter,
+    GenericListResponse,
+    GenericRead,
+    GenericResponse,
+    GenericUpdate,
+)
 from app.models.user import User
 from app.services import GenericService
 
@@ -18,12 +24,7 @@ FilterSchemaType = TypeVar("FilterSchemaType", bound=GenericFilter)
 ReadSchemaType = TypeVar("ReadSchemaType", bound=GenericRead)
 
 
-class GenericRouter(
-    APIRouter,
-    Generic[
-        ModelType, CreateSchemaType, UpdateSchemaType, FilterSchemaType, ReadSchemaType
-    ],
-):
+class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchemaType, FilterSchemaType, ReadSchemaType]):
     """
     Generic router class that provides CRUD operations for any model.
     """
@@ -38,9 +39,7 @@ class GenericRouter(
         read_schema: Type[ReadSchemaType],
         filter_schema: Type[FilterSchemaType],
     ):
-        super().__init__(
-            prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")]
-        )
+        super().__init__(prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")])
         self.service = service
         self.create_schema = create_schema
         self.update_schema = update_schema
@@ -71,7 +70,7 @@ class GenericRouter(
         async def create_item(
             obj_in: self.create_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.create(db, obj_in)
             return GenericResponse(data=obj)
@@ -81,7 +80,7 @@ class GenericRouter(
         async def get_item(
             item_id: UUID,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.get_by_id(db, item_id)
             return GenericResponse(data=obj)
@@ -94,7 +93,7 @@ class GenericRouter(
             sort_by: str | None = None,
             sort_order: str = "asc",
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             """List all items with basic pagination and sorting."""
             skip = (page - 1) * page_size
@@ -106,16 +105,14 @@ class GenericRouter(
                 sort_order=sort_order,
             )
             total = await self.service.count(db)
-            return GenericListResponse(
-                items=items, total=total, page=page, page_size=page_size
-            )
+            return GenericListResponse(items=items, total=total, page=page, page_size=page_size)
 
     def _register_search_route(self):
         @self.post("/search", response_model=GenericListResponse[self.read_schema])
         async def search_items(
             filters: self.filter_schema = Depends(),
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             """Search items with filtering, pagination, and sorting."""
             skip = (filters.page - 1) * filters.page_size
@@ -128,9 +125,7 @@ class GenericRouter(
                 sort_order=filters.sort_order or "asc",
             )
             total = await self.service.count(db, filters=filters)
-            return GenericListResponse(
-                items=items, total=total, page=filters.page, page_size=filters.page_size
-            )
+            return GenericListResponse(items=items, total=total, page=filters.page, page_size=filters.page_size)
 
     def _register_update_route(self):
         @self.put("/{uid}", response_model=GenericResponse[self.read_schema])
@@ -138,7 +133,7 @@ class GenericRouter(
             item_id: UUID,
             obj_in: self.update_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.update(db, item_id, obj_in)
             return GenericResponse(data=obj)
@@ -149,7 +144,7 @@ class GenericRouter(
             item_id: UUID,
             obj_in: self.update_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.patch(db, item_id, obj_in)
             return GenericResponse(data=obj)
@@ -160,7 +155,7 @@ class GenericRouter(
             item_id: UUID,
             hard_delete: bool = Query(False),
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.delete(db, item_id, hard_delete)
             return GenericResponse(data=obj)
@@ -170,13 +165,18 @@ class GenericRouter(
         async def restore_item(
             item_id: UUID,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user),
+            user: User = Depends(get_current_user)
         ):
             obj = await self.service.restore(db, item_id)
             return GenericResponse(data=obj)
 
     def add_custom_route(
-        self, path: str, method: str, response_model: Type, handler: Callable, **kwargs
+        self,
+        path: str,
+        method: str,
+        response_model: Type,
+        handler: Callable,
+        **kwargs
     ):
         """Add a custom route to the router."""
         route_method = getattr(self, method.lower())
