@@ -8,10 +8,10 @@ from typing import Any, Dict, Literal
 
 from sqlmodel.ext.asyncio.session import AsyncSession  # type: ignore
 
-from app.core.config import settings
+from app.config import settings
 from app.models.audit_log import AuditLog
 from app.models.portfolio_ledger import PortfolioLedger
-from app.utils.tracing import get_correlation_id
+from app.utils.tracing import get_correlation_id, get_transaction_id
 
 
 def setup_logging() -> None:
@@ -31,7 +31,7 @@ def setup_logging() -> None:
     file_handler = RotatingFileHandler(
         settings.LOG_FILE,
         maxBytes=settings.LOG_MAX_BYTES,
-        backupCount=settings.LOG_BACKUP_COUNT
+        backupCount=settings.LOG_BACKUP_COUNT,
     )
     file_handler.setLevel(settings.LOG_LEVEL)
     file_handler.setFormatter(
@@ -58,8 +58,16 @@ class JsonFormatter(logging.Formatter):
             "level": record.levelname,
             "message": record.getMessage(),
             "correlation_id": get_correlation_id(),
-            "component": getattr(record, "component", record.name),  # Use record.name as fallback
+            "component": getattr(
+                record, "component", record.name
+            ),  # Use record.name as fallback
         }
+
+        # Add transaction ID if present
+        transaction_id = get_transaction_id()
+        if transaction_id:
+            log_data["transaction_id"] = transaction_id
+
         if hasattr(record, "user_id"):
             log_data["user_id"] = record.user_id
         if hasattr(record, "action"):
@@ -77,8 +85,22 @@ class TextFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as plain text."""
         correlation_id = get_correlation_id()
-        component = getattr(record, "component", record.name)  # Use record.name as fallback
-        message = f"[{correlation_id}] [{component}] {record.getMessage()}"
+        transaction_id = get_transaction_id()
+        component = getattr(
+            record, "component", record.name
+        )  # Use record.name as fallback
+
+        # Build message with correlation and transaction IDs
+        message_parts = []
+        if correlation_id:
+            message_parts.append(f"[correlation_id={correlation_id}]")
+        if transaction_id:
+            message_parts.append(f"[transaction_id={transaction_id}]")
+        message_parts.append(f"[{component}]")
+        message_parts.append(record.getMessage())
+
+        message = " ".join(message_parts)
+
         if hasattr(record, "user_id"):
             message = f"[user_id={record.user_id}] {message}"
         if hasattr(record, "action"):
@@ -106,7 +128,9 @@ async def log_activity(
 
     # Check for valid log level
     if level not in loggers:
-        raise ValueError(f"Invalid log level: {level}. Choose from list(loggers.keys())")
+        raise ValueError(
+            f"Invalid log level: {level}. Choose from list(loggers.keys())"
+        )
 
     # Add correlation ID to message
     correlation_id = get_correlation_id()
@@ -131,7 +155,7 @@ async def log_user_action(
 ) -> None:
     """
     Log a user action performed through an API endpoint.
-    
+
     Args:
         session: Database session
         user_id: ID of the user performing the action

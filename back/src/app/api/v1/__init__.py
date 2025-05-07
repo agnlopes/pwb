@@ -1,5 +1,6 @@
 from typing import Callable, Generic, Optional, Type, TypeVar, List
 from uuid import UUID
+import time
 
 from fastapi import APIRouter, Depends, Query
 from sqlmodel.ext.asyncio.session import AsyncSession
@@ -17,6 +18,7 @@ from app.models import (
 from app.models.user import User
 from app.services import GenericService
 from app.utils.logging import log_user_action
+from app.metrics import track_user_action, track_database_operation
 
 ModelType = TypeVar("ModelType")
 CreateSchemaType = TypeVar("CreateSchemaType", bound=GenericCreate)
@@ -25,7 +27,12 @@ FilterSchemaType = TypeVar("FilterSchemaType", bound=GenericFilter)
 ReadSchemaType = TypeVar("ReadSchemaType", bound=GenericRead)
 
 
-class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchemaType, FilterSchemaType, ReadSchemaType]):
+class GenericRouter(
+    APIRouter,
+    Generic[
+        ModelType, CreateSchemaType, UpdateSchemaType, FilterSchemaType, ReadSchemaType
+    ],
+):
     """
     Generic router class that provides CRUD operations for any model.
     """
@@ -40,7 +47,9 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
         read_schema: Type[ReadSchemaType],
         filter_schema: Type[FilterSchemaType],
     ):
-        super().__init__(prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")])
+        super().__init__(
+            prefix=f"/{model_name}", tags=[model_name.title().replace("_", " ")]
+        )
         self.service = service
         self.create_schema = create_schema
         self.update_schema = update_schema
@@ -72,9 +81,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
         async def create_item(
             obj_in: self.create_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.create(db, obj_in)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("create", self.model_name)
+            track_database_operation("create", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -92,9 +109,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
         async def get_item(
             item_id: UUID,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.get_by_id(db, item_id)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("get", self.model_name)
+            track_database_operation("read", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -114,9 +139,10 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             sort_by: str | None = None,
             sort_order: str = "asc",
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
             """List all items with basic pagination and sorting."""
+            start_time = time.time()
             skip = (page - 1) * page_size
             items = await self.service.get_all(
                 db,
@@ -126,6 +152,13 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                 sort_order=sort_order,
             )
             total = await self.service.count(db)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("list", self.model_name)
+            track_database_operation("read", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -141,16 +174,19 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                     "total": total,
                 },
             )
-            return GenericListResponse(items=items, total=total, page=page, page_size=page_size)
+            return GenericListResponse(
+                items=items, total=total, page=page, page_size=page_size
+            )
 
     def _register_search_route(self):
         @self.post("/search", response_model=GenericListResponse[self.read_schema])
         async def search_items(
             filters: self.filter_schema = Depends(),
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
             """Search items with filtering, pagination, and sorting."""
+            start_time = time.time()
             skip = (filters.page - 1) * filters.page_size
             items = await self.service.get_all(
                 db,
@@ -161,6 +197,13 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                 sort_order=filters.sort_order or "asc",
             )
             total = await self.service.count(db, filters=filters)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("search", self.model_name)
+            track_database_operation("read", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -173,7 +216,9 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
                     "total": total,
                 },
             )
-            return GenericListResponse(items=items, total=total, page=filters.page, page_size=filters.page_size)
+            return GenericListResponse(
+                items=items, total=total, page=filters.page, page_size=filters.page_size
+            )
 
     def _register_update_route(self):
         @self.put("/{uid}", response_model=GenericResponse[self.read_schema])
@@ -181,9 +226,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             item_id: UUID,
             obj_in: self.update_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.update(db, item_id, obj_in)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("update", self.model_name)
+            track_database_operation("update", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -202,9 +255,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             item_id: UUID,
             obj_in: self.update_schema,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.patch(db, item_id, obj_in)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("patch", self.model_name)
+            track_database_operation("update", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -223,9 +284,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             item_id: UUID,
             hard_delete: bool = Query(False),
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.delete(db, item_id, hard_delete)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("delete", self.model_name)
+            track_database_operation("delete", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -243,9 +312,17 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
         async def restore_item(
             item_id: UUID,
             db: AsyncSession = Depends(get_session),
-            user: User = Depends(get_current_user)
+            user: User = Depends(get_current_user),
         ):
+            start_time = time.time()
             obj = await self.service.restore(db, item_id)
+            duration = time.time() - start_time
+
+            # Track metrics
+            track_user_action("restore", self.model_name)
+            track_database_operation("update", self.model_name, duration)
+
+            # Log action
             await log_user_action(
                 session=db,
                 user_id=user.id,
@@ -258,12 +335,7 @@ class GenericRouter(APIRouter, Generic[ModelType, CreateSchemaType, UpdateSchema
             return GenericResponse(data=obj)
 
     def add_custom_route(
-        self,
-        path: str,
-        method: str,
-        response_model: Type,
-        handler: Callable,
-        **kwargs
+        self, path: str, method: str, response_model: Type, handler: Callable, **kwargs
     ):
         """Add a custom route to the router."""
         route_method = getattr(self, method.lower())

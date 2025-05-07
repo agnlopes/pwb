@@ -17,6 +17,7 @@ class User(GenericModel, table=True):
     """
     User model
     """
+
     __tablename__ = "user"
 
     username: str = Field(index=True, nullable=False, unique=True)

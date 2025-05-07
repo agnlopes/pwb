@@ -26,8 +26,8 @@ router = GenericRouter(
 )
 
 router.add_custom_route(
-    path="/by_name/{name}", 
-    method="get", 
-    response_model=AssetTypeRead, 
-    handler=service.get_by_name
+    path="/by_name/{name}",
+    method="get",
+    response_model=AssetTypeRead,
+    handler=service.get_by_name,
 )

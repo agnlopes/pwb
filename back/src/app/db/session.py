@@ -1,20 +1,19 @@
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import create_async_engine
 from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
+from app.config import settings
 
-from app.core.config import settings
+# Create async engine
+engine = create_async_engine(settings.DB_URL, echo=True, future=True)
 
-engine = create_async_engine(settings.DATABASE_URL, echo=True, future=True)
-SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+# Create async session factory
+SessionLocal = AsyncSession
 
-
-# Used for FastAPI
-async def get_session():
-    async with SessionLocal() as session:
+async def get_session() -> AsyncSession:
+    """Get a database session."""
+    async with SessionLocal(engine) as session:
         yield session
 
-
-# Used for tests or scripts
-async def get_session_raw():
-    async with SessionLocal() as session:
-        return session
+async def get_session_raw() -> AsyncSession:
+    """Get a raw database session without dependency injection."""
+    return SessionLocal(engine)

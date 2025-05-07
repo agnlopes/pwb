@@ -19,7 +19,9 @@ from app.services import GenericService
 from sqlalchemy import func
 
 
-class AssetTypeService(GenericService[AssetType, AssetTypeCreate, AssetTypeUpdate, AssetTypeFilter]):
+class AssetTypeService(
+    GenericService[AssetType, AssetTypeCreate, AssetTypeUpdate, AssetTypeFilter]
+):
     """
     Asset Type service for managing asset types.
     Extends the generic service with specific functionality for asset types.
@@ -32,18 +34,18 @@ class AssetTypeService(GenericService[AssetType, AssetTypeCreate, AssetTypeUpdat
         self,
         name: str,
         db: AsyncSession = Depends(get_session),
-        user: User = Depends(get_current_user)
+        user: User = Depends(get_current_user),
     ) -> AssetTypeRead:
         """Get an asset type by its name."""
-        statement = select(self.model).where(self.model.name == name, self.model.is_active)
+        statement = select(self.model).where(
+            self.model.name == name, self.model.is_active
+        )
         result = await db.exec(statement)
         asset_type = result.first()
-        
+
         if not asset_type:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Asset type with name {name} not found"
+                detail=f"Asset type with name {name} not found",
             )
         return asset_type
-    
-    

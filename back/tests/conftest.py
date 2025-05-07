@@ -7,12 +7,12 @@ from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 from fastapi.testclient import TestClient
 
-from app.core.config import settings
+from app.config import settings
 from app.db.session import SessionLocal
 from app.main import app
 
-# Ensure tests use SQLite
-os.environ["DATABASE_TYPE"] = "sqlite"
+# Set test environment variables
+os.environ["DB_TYPE"] = "sqlite"
 os.environ["SQLITE_DB"] = "sqlite+aiosqlite:///./test.db"
 
 
@@ -52,4 +52,4 @@ async def db_session(test_db: AsyncSession) -> AsyncSession:
 @pytest.fixture
 def client() -> TestClient:
     """Create a test client."""
-    return TestClient(app) 
+    return TestClient(app)
